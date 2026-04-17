@@ -34,56 +34,46 @@ export class CarsService {
       { 
         params: {
           page: page
-        },
-        timeout: this.timeout 
+        }
       }
     )
   }
 
   public getCarDetails(carId: string): Observable<CarDetailDto> {
     return this.http.get<CarDetailDto>(
-      `${this.baseUrl}/cars/${carId}`,
-      {
-        timeout: this.timeout
-      }
+      `${this.baseUrl}/cars/${carId}`
     )
   }
 
   public createCar(car: CreateCarDto): Observable<CarDetailDto> {
     return this.http.post<CarDetailDto>(
       `${this.baseUrl}/cars`, 
-      car,
-      {
-        timeout: this.timeout
-      }
+      car
     )
   }
 
   public editCar(carId: string, car: CreateCarDto): Observable<CarDetailDto> {
     return this.http.put<CarDetailDto>(
       `${this.baseUrl}/cars/${carId}`,
-      car,
-      {
-        timeout: 3000
-      }
+      car
     )
   }
 
   public getBrands(): Observable<CarBrandDto[]> {
     return this.http.get<CarBrandDto[]>(
-      `${this.baseUrl}/brands`,
-      {
-        timeout: 3000
-      }
+      `${this.baseUrl}/brands`
     )
   }
 
   public getModelsByBrand(brandId: string): Observable<CarModelDto[]> {
     return this.http.get<CarModelDto[]>(
-      `${this.baseUrl}/brands/${brandId}/models`,
-      {
-        timeout: 3000
-      }
+      `${this.baseUrl}/brands/${brandId}/models`
     )
+  }
+
+  public deleteCar(carId: string) {
+    return this.http.delete(
+      `${this.baseUrl}/cars/${carId}`
+    );
   }
 }
