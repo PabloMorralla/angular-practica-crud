@@ -5,6 +5,7 @@ import { RouterLink } from "@angular/router";
 import { Dialog } from '../../shared/dialog/dialog';
 import { CarSummaryDto } from '../../../model/DTO/car-summary-dto';
 import { Fab } from '../../shared/fab/fab';
+import { HttpErrorResponse } from '@angular/common/http';
 
 @Component({
   selector: 'app-home',
@@ -28,7 +29,7 @@ export class Home implements OnInit {
   items = computed(()=>this.paginatedResponse()?.items ?? [])
 
   isDialogOpen = signal(false);
-  carToDelete: WritableSignal<CarSummaryDto | undefined> = signal(undefined);
+  carToDelete = signal<CarSummaryDto | undefined>(undefined);
 
   constructor (private carsService: CarsService) {}
 
@@ -94,11 +95,32 @@ export class Home implements OnInit {
   }
 
   onDialogConfirmation() {
-    /*TODO delete carToDelete*/ 
-    alert(`Delete car ${this.carToDelete()?.id ?? 'Error'}`);
-  }
+    if (!this.carToDelete()){
+      alert('There was an unexpected error deleting the car');
+      return;
+    }
 
-  addCar(){
-    alert('Create Car');
+    this.carsService.deleteCar(this.carToDelete()!.id).subscribe({
+      next: () => {
+        alert('Car deleted successfully.');
+        this.refreshCars();
+      },
+
+      error: (error: HttpErrorResponse) => {
+        switch(error.status){
+          case 403:
+            alert('You do not have permission to edit a car.');
+            break;
+          case 404:
+            alert('This car does not exist.');
+            break;
+          default:
+            alert('There was an unexpected error deleting the car');
+            break;
+        }
+      }
+    });
+
+    this.isDialogOpen.set(false);
   }
 }
