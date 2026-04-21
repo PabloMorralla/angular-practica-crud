@@ -6,6 +6,7 @@ import { CreateCarDto } from '../../model/DTO/create-car-dto';
 import { CarBrandDto } from '../../model/DTO/car-brand-dto';
 import { Observable } from 'rxjs';
 import { CarModelDto } from '../../model/DTO/car-model-dto';
+import { UploadedCarDocumentResponseDto } from '../../model/DTO/uploaded-car-document-response-dto';
 
 
 @Injectable({
@@ -74,6 +75,19 @@ export class CarsService {
   public deleteCar(carId: string) {
     return this.http.delete(
       `${this.baseUrl}/cars/${carId}`
+    );
+  }
+
+  public getFile(carId: string): Observable<UploadedCarDocumentResponseDto> {
+    return this.http.get<UploadedCarDocumentResponseDto>(
+      `${this.baseUrl}/cars/${carId}/documents`
+    );
+  }
+
+  public uploadFile(carId: string, formData: FormData): Observable<UploadedCarDocumentResponseDto> {
+    return this.http.post<UploadedCarDocumentResponseDto>(
+      `${this.baseUrl}/cars/${carId}/documents`, 
+      formData
     );
   }
 }

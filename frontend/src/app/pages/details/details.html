@@ -15,6 +15,44 @@
     }
 
     @else if(carDetails()) {
+        <h2>Upload document</h2>
+
+        <form [formGroup]="uploadFileForm" (ngSubmit)="onSubmitFileForm()">
+            @if (uploadedFile()) {
+                <label>There is already an uploaded file: {{uploadedFile()?.originalName}}
+                    <button (click)="downloadFile()">
+                        Download file
+                    </button>
+                </label>
+            }
+            
+            <label>File
+                <input 
+                    type="file"
+                    (change)="onFileSelected($event)"
+                />
+            </label>
+
+            <label>Description
+                <input 
+                    type="text"
+                    formControlName="description"
+                />
+            </label>
+
+            <button type="submit" [disabled]="uploadFileForm.invalid">
+                Upload File
+            </button>
+
+            @if (fileSuccess) {
+                <p class="success">{{fileSuccess}}</p>
+            }
+            @if (fileError) {
+                <p class="error">{{fileError}}</p>
+            }
+        </form>
+
+        <h2>List of Cars</h2>
         @for (carDetailsEntity of carDetails()?.carDetails; track $index) {
             <img [src]="`/api${carDetailsEntity.imageUrl}`" alt="Car Image">
             <h2>{{carDetailsEntity.description}}</h2>
@@ -64,6 +102,8 @@
                     <td>{{carDetailsEntity.licensePlate}}</td>
                 </tr>
             </table>
+
+            @if(!$last){<hr>}
         }
     }
 </main>
