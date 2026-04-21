@@ -44,11 +44,11 @@
                 Upload File
             </button>
 
-            @if (fileSuccess) {
-                <p class="success">{{fileSuccess}}</p>
+            @if (fileSuccess()) {
+                <p class="success">{{fileSuccess()}}</p>
             }
-            @if (fileError) {
-                <p class="error">{{fileError}}</p>
+            @if (fileError()) {
+                <p class="error">{{fileError()}}</p>
             }
         </form>
 

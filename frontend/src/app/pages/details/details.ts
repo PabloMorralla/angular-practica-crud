@@ -25,8 +25,8 @@ export class Details implements OnInit {
 
   uploadFileForm: FormGroup;
   selectedFile: File | null = null;
-  fileError: string | null = null;
-  fileSuccess: string | null = null;
+  fileError = signal<string|null>(null);
+  fileSuccess = signal<string|null>(null);
   
   uploadedFile = signal<UploadedCarDocumentResponseDto|null>(null);
 
@@ -101,17 +101,13 @@ export class Details implements OnInit {
 
   onSubmitFileForm(){
     if (this.uploadFileForm.invalid) {
-      this.fileError = 'Form is invalid';
+      this.fileError.set('Form is invalid');
       return;
     }
 
     if (!this.selectedFile) {
-      this.fileError = 'No file selected';
+      this.fileError.set('No file selected');
       return;
-    }
-
-    if (!this.carId) {
-      this.fileError = 'Unknown error';
     }
 
     const formData = new FormData();
@@ -126,33 +122,38 @@ export class Details implements OnInit {
   }
 
   uploadFile(formData: FormData) {
+    if (!this.carId){
+      this.fileError.set('Unknown error');
+      return;
+    }
+
     this.carsService.uploadFile(
       this.carId!, 
       formData
     ).subscribe({
       next: () => {
-        this.fileError = null;
-        this.fileSuccess = 'File uploaded successfully'
+        this.fileError.set(null);
+        this.fileSuccess.set('File uploaded successfully');
       },
 
       error: (error: HttpErrorResponse) => {
-        this.fileSuccess = null;
+        this.fileSuccess.set(null);
         switch(error.status){  
           case 403:
-            this.fileError = 'You do not have permission to upload a file';
+            this.fileError.set('You do not have permission to upload a file');
             break;
           case 404:
-            this.fileError = 'Car not found';
+            this.fileError.set('Car not found');
             break;
           case 413:
-            this.fileError = 'File is too large (max. 5MB)';
+            this.fileError.set('File is too large (max. 5MB)');
             break;
           case 415:
-            this.fileError = 'Unsupported file type';
+            this.fileError.set('Unsupported file type');
             break;
           case 400:
           default:
-            this.fileError = 'Unknown error';
+            this.fileError.set('Unknown error');
             break;
         }
       }
@@ -171,20 +172,20 @@ export class Details implements OnInit {
     const allowedTypes = ['application/pdf', 'image/png'];
   
     if (file.size > maxSize) {
-      this.fileError = 'The file is too large (max. 5MB)';
+      this.fileError.set('The file is too large (max. 5MB)');
       this.uploadFileForm.patchValue({ file: null });
       return;
     }
 
     if (!allowedTypes.includes(file.type)) {
-      this.fileError = 'File type not allowed';
+      this.fileError.set('File type not allowed');
       this.uploadFileForm.patchValue({ file: null });
       return;
     }
 
     this.selectedFile = file;
     this.uploadFileForm.patchValue({ file: file });
-    this.fileError = null;
+    this.fileError.set(null);
   }
 
   downloadFile(){
