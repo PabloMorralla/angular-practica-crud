@@ -29,6 +29,7 @@ export class Details implements OnInit {
   fileSuccess = signal<string|null>(null);
   
   uploadedFile = signal<UploadedCarDocumentResponseDto|null>(null);
+  uploadedFileSucces = signal<string|null>(null);
   uploadedFileError = signal<string|null>(null);
 
   constructor (
@@ -87,10 +88,12 @@ export class Details implements OnInit {
           case 404: // There is no file
             this.uploadedFile.set(null);
             this.uploadedFileError.set('This car has no document');
+            this.uploadedFileSucces.set(null);
             break;
           default:
             this.uploadedFile.set(null);
             this.uploadedFileError.set('Unknown error while loading the file of this car');
+            this.uploadedFileSucces.set(null);
         }
       },
     });
@@ -134,6 +137,7 @@ export class Details implements OnInit {
   uploadFile(formData: FormData) {
     if (!this.carId){
       this.fileError.set('Unknown error');
+      this.fileSuccess.set(null);
       return;
     }
 
@@ -197,5 +201,35 @@ export class Details implements OnInit {
     this.selectedFile = file;
     this.uploadFileForm.patchValue({ file: file });
     this.fileError.set(null);
+  }
+
+  deleteFile(){
+    if (!this.carId){
+      this.uploadedFileError.set('Unknown error');
+      return;
+    }
+
+    this.carsService.deleteFile(this.carId).subscribe({
+      next: () => {
+        this.uploadedFileError.set(null);
+        this.uploadedFileSucces.set('File removed successfully');
+        this.getFile();
+      },
+
+      error: (error: HttpErrorResponse) => {
+        this.uploadedFileSucces.set(null);
+        switch(error.status) {
+          case 403:
+            this.uploadedFileError.set('You do not have permission to delete documents');
+            break;
+          case 404:
+            this.uploadedFileError.set('Car or document not found');
+            break;
+          default:
+            this.uploadedFileError.set('Unknown error');
+            break;
+        }
+      },
+    });
   }
 }

@@ -17,17 +17,21 @@
     @else if(carDetails()) {
         <h2>Upload document</h2>
 
-        <form [formGroup]="uploadFileForm" (ngSubmit)="onSubmitFileForm()">
+        <form [formGroup]="uploadFileForm">
             @if (uploadedFile()) {
                 <label>There is already an uploaded file: {{uploadedFile()?.originalName}}
                     <a
                         class="button"
-                        [href]="uploadedFile()?.downloadUrl"
+                        [href]="`/api${uploadedFile()?.downloadUrl}`"
                         [download]="uploadedFile()?.originalName"
                     >
                         Download file
                     </a>
+                    <button class="error-container" (click)="deleteFile()">Delete File</button>
                 </label>
+            }
+            @if (uploadedFileSucces()) {
+                <p class="success">{{uploadedFileSucces()}}</p>
             }
             @if (uploadedFileError()) {
                 <p class="error">{{uploadedFileError()}}</p>
@@ -47,7 +51,7 @@
                 />
             </label>
 
-            <button type="submit" [disabled]="uploadFileForm.invalid">
+            <button type="submit" [disabled]="uploadFileForm.invalid" (click)="onSubmitFileForm()">
                 Upload File
             </button>
 

@@ -90,4 +90,10 @@ export class CarsService {
       formData
     );
   }
+
+  public deleteFile(carId: string) {
+    return this.http.delete(
+      `${this.baseUrl}/cars/${carId}/documents`
+    )
+  }
 }
