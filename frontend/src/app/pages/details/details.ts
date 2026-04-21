@@ -229,7 +229,7 @@ export class Details implements OnInit {
             this.uploadedFileError.set('Unknown error');
             break;
         }
-      },
+      }
     });
   }
 }
