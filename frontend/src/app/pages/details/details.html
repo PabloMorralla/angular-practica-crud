@@ -20,10 +20,17 @@
         <form [formGroup]="uploadFileForm" (ngSubmit)="onSubmitFileForm()">
             @if (uploadedFile()) {
                 <label>There is already an uploaded file: {{uploadedFile()?.originalName}}
-                    <button (click)="downloadFile()">
+                    <a
+                        class="button"
+                        [href]="uploadedFile()?.downloadUrl"
+                        [download]="uploadedFile()?.originalName"
+                    >
                         Download file
-                    </button>
+                    </a>
                 </label>
+            }
+            @if (uploadedFileError()) {
+                <p class="error">{{uploadedFileError()}}</p>
             }
             
             <label>File

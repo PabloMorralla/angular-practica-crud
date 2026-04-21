@@ -233,7 +233,8 @@ input[type=checkbox] {
     height: 2em;
 }
 
-form button {
+form button, form a.button {
+    display: block;
     width: 100%;
     font-size: 1.05em;
     padding: var(--small-padding);
@@ -241,9 +242,12 @@ form button {
     color: var(--primary-color);
     border: var(--light-border);
     cursor: pointer;
+    text-align: center;
+    text-decoration: none;
 }
 
 form button[type=submit] {
+    display: block;
     background-color: var(--primary-color);
     color: var(--on-primary-color);
     border: none;

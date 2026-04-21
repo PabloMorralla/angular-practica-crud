@@ -29,6 +29,7 @@ export class Details implements OnInit {
   fileSuccess = signal<string|null>(null);
   
   uploadedFile = signal<UploadedCarDocumentResponseDto|null>(null);
+  uploadedFileError = signal<string|null>(null);
 
   constructor (
     private carsService: CarsService,
@@ -78,11 +79,20 @@ export class Details implements OnInit {
     this.carsService.getFile(this.carId).subscribe({
       next: (fileResponse: UploadedCarDocumentResponseDto) => {
         this.uploadedFile.set(fileResponse);
+        this.uploadedFileError.set(null);
       },
 
       error: (error: HttpErrorResponse)=>{
-        alert(error.message);
-      }, // TODO handle error
+        switch(error.status){
+          case 404: // There is no file
+            this.uploadedFile.set(null);
+            this.uploadedFileError.set('This car has no document');
+            break;
+          default:
+            this.uploadedFile.set(null);
+            this.uploadedFileError.set('Unknown error while loading the file of this car');
+        }
+      },
     });
   }
 
@@ -134,6 +144,7 @@ export class Details implements OnInit {
       next: () => {
         this.fileError.set(null);
         this.fileSuccess.set('File uploaded successfully');
+        this.getFile();
       },
 
       error: (error: HttpErrorResponse) => {
@@ -186,9 +197,5 @@ export class Details implements OnInit {
     this.selectedFile = file;
     this.uploadFileForm.patchValue({ file: file });
     this.fileError.set(null);
-  }
-
-  downloadFile(){
-
   }
 }
