@@ -11,16 +11,15 @@ import {
   Put,
   Query,
   Res,
-  UnsupportedMediaTypeException,
   UploadedFile,
   UseFilters,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { FileFilterCallback, memoryStorage } from 'multer';
+import { memoryStorage } from 'multer';
 import {
-  ApiBearerAuth,
+  ApiCookieAuth,
   ApiBody,
   ApiConsumes,
   ApiExtraModels,
@@ -31,7 +30,8 @@ import {
   ApiTags,
   getSchemaPath,
 } from '@nestjs/swagger';
-import { Request, Response } from 'express';
+import { Response } from 'express';
+import { ACCESS_TOKEN_COOKIE_NAME } from '../auth/auth.constants';
 import { UserRole } from '../auth/auth.service';
 import { Roles } from '../common/decorators/roles.decorator';
 import { PaginatedResponseDto } from '../common/dto/pagination.dto';
@@ -39,7 +39,6 @@ import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard } from '../guards/roles.guard';
 import { MulterExceptionFilter } from './filters/multer-exception.filter';
 import {
-  ALLOWED_DOCUMENT_MIME_TYPES,
   CarDocumentFileValidationPipe,
   MAX_DOCUMENT_FILE_SIZE,
 } from './pipes/car-document-file-validation.pipe';
@@ -54,7 +53,7 @@ import { GetCarsFilterDto } from './dto/get-cars-filter.dto';
 import { Car, CarSummary } from './entities';
 
 @ApiTags('Vehicles')
-@ApiBearerAuth()
+@ApiCookieAuth(ACCESS_TOKEN_COOKIE_NAME)
 @ApiExtraModels(PaginatedResponseDto, CarSummary)
 @Controller('cars')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -175,7 +174,7 @@ export class CarsController {
     return this.carsService.update(id, carToUpdate);
   }
 
-  @Get(':id/documents')
+  @Get(':id/document')
   @ApiOperation({
     summary: 'Retrieve metadata for the single document linked to a vehicle',
   })
@@ -192,7 +191,7 @@ export class CarsController {
     return this.carsService.getDocumentMetadata(id);
   }
 
-  @Get(':id/documents/download')
+  @Get(':id/document/download')
   @ApiOperation({
     summary: 'Download the single document linked to a vehicle',
   })
@@ -210,7 +209,7 @@ export class CarsController {
     response.download(document.storagePath, document.originalName);
   }
 
-  @Delete(':id/documents')
+  @Delete(':id/document')
   @Roles(UserRole.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
@@ -224,30 +223,13 @@ export class CarsController {
     this.carsService.removeDocument(id);
   }
 
-  @Post(':id/documents')
+  @Post(':id/document')
   @Roles(UserRole.ADMIN)
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
       limits: {
         fileSize: MAX_DOCUMENT_FILE_SIZE,
-      },
-      fileFilter: (
-        _request: Request,
-        file: { mimetype: string },
-        callback: FileFilterCallback,
-      ) => {
-        if (!ALLOWED_DOCUMENT_MIME_TYPES.has(file.mimetype)) {
-          callback(
-            new UnsupportedMediaTypeException(
-              `Unsupported file type "${file.mimetype}".`,
-            ),
-            false,
-          );
-          return;
-        }
-
-        callback(null, true);
       },
     }),
   )
@@ -295,7 +277,8 @@ export class CarsController {
   })
   @ApiResponse({
     status: 415,
-    description: 'Unsupported file type',
+    description:
+      'Unsupported file type. Allowed formats: pdf, txt, doc, docx, png, jpg, jpeg.',
   })
   @ApiResponse({ status: 404, description: 'Vehicle not found' })
   @ApiResponse({ status: 403, description: 'Forbidden' })

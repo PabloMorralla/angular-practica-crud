@@ -2,7 +2,7 @@
 
 Backend de práctica construido con NestJS para dar soporte a una aplicación Angular de gestión de coches.
 
-Este backend ya incorpora autenticación JWT, roles, validaciones, Swagger, carga de dataset, catálogo de marcas y modelos, y un CRUD completo de coches con paginación y filtros.
+Este backend ya incorpora autenticación basada en cookies `HttpOnly`, refresh token rotado, roles, validaciones, Swagger, carga de dataset, catálogo de marcas y modelos, y un CRUD completo de coches con paginación y filtros.
 
 ## Stack
 
@@ -11,7 +11,7 @@ Este backend ya incorpora autenticación JWT, roles, validaciones, Swagger, carg
 - `class-validator`
 - `class-transformer`
 - `@nestjs/swagger`
-- JWT con `passport-jwt`
+- JWT con `passport-jwt` usado dentro de un flujo de cookies `HttpOnly`
 
 ## Objetivo de este backend
 
@@ -20,7 +20,7 @@ Este backend está pensado para que el frontend practique contra una API realist
 Permite trabajar en dos niveles:
 
 - nivel base: consumo de API, tablas, detalle, formularios, validaciones y CRUD
-- nivel avanzado: login real, interceptor JWT, guards de Angular, control por roles, paginación y filtros
+- nivel avanzado: login real, refresh de sesión, guards de Angular, control por roles, paginación y filtros
 
 ## Puesta en marcha
 
@@ -57,6 +57,13 @@ El archivo actual es `backend/.env`.
 ```env
 AUTH_ENABLED=true
 JWT_SECRET=super-secret-key-123
+ACCESS_TOKEN_EXPIRES_IN=15m
+REFRESH_TOKEN_EXPIRES_IN=7d
+ACCESS_TOKEN_COOKIE_MAX_AGE_MS=900000
+REFRESH_TOKEN_COOKIE_MAX_AGE_MS=604800000
+AUTH_COOKIE_PATH=/
+AUTH_COOKIE_SAME_SITE=lax
+AUTH_COOKIE_SECURE=false
 API_DELAY_ENABLED=true
 API_DELAY_MIN_MS=200
 API_DELAY_MAX_MS=900
@@ -71,7 +78,9 @@ Controla si el backend exige autenticación real o si entra en modo bypass.
 Modo autenticado real:
 
 - hay que hacer login contra `POST /auth/login`
-- hay que enviar `Authorization: Bearer <token>`
+- la sesión se apoya en cookies `HttpOnly`
+- el frontend debe renovar sesión con `POST /auth/refresh` cuando corresponda
+- el frontend debe cerrar sesión con `POST /auth/logout`
 - `GET /auth/me` devuelve el usuario autenticado
 - crear, editar y borrar coches requiere rol `ADMIN`
 
@@ -89,7 +98,35 @@ Esto está pensado para que perfiles junior o en reciclaje puedan empezar por in
 
 Se usa para firmar y validar tokens JWT.
 
-En esta práctica el access token no caduca automáticamente. De este modo se mantiene el foco en login, guards, interceptor JWT y control por roles, sin añadir la complejidad de refresh tokens.
+### Duracion de sesion y cookies
+
+La practica usa dos tiempos de sesion realistas por defecto:
+
+- `access token`: `15m`
+- `refresh token`: `7d`
+
+Esto obliga a que el frontend entienda y gestione renovacion de sesion sin caer en el patron irreal de un token manual eterno en cliente.
+
+Variables relacionadas:
+
+- `ACCESS_TOKEN_EXPIRES_IN`: expiracion JWT del access token
+- `REFRESH_TOKEN_EXPIRES_IN`: expiracion JWT del refresh token
+- `ACCESS_TOKEN_COOKIE_MAX_AGE_MS`: vida de la cookie `access_token` en navegador
+- `REFRESH_TOKEN_COOKIE_MAX_AGE_MS`: vida de la cookie `refresh_token` en navegador
+- `AUTH_COOKIE_PATH`: rutas en las que el navegador enviara las cookies
+- `AUTH_COOKIE_SAME_SITE`: politica anti-CSRF del navegador (`lax`, `strict`, `none`)
+- `AUTH_COOKIE_SECURE`: si es `true`, la cookie solo viaja por HTTPS
+
+Recomendacion de trabajo:
+
+- local con proxy Angular: `AUTH_COOKIE_PATH=/`, `AUTH_COOKIE_SAME_SITE=lax`, `AUTH_COOKIE_SECURE=false`
+- produccion con HTTPS: `AUTH_COOKIE_PATH=/`, `AUTH_COOKIE_SAME_SITE=lax` o `strict`, `AUTH_COOKIE_SECURE=true`
+
+Nota importante sobre `AUTH_COOKIE_PATH`:
+
+- el navegador decide si envia una cookie segun la ruta publica que ve
+- si el frontend usa un proxy con prefijos como `/api`, una cookie demasiado restringida puede no viajar aunque el backend internamente trabaje en `/auth`
+- por eso `/` es la opcion mas robusta para este proyecto
 
 ## Arquitectura actual
 
@@ -139,6 +176,8 @@ Consecuencia práctica:
 
 El README no da una receta cerrada para resolverlo a propósito. Esa parte forma parte del trabajo de integración frontend.
 
+En la solucion de referencia, la politica de cookies esta parametrizada para que el equipo pueda ajustar el comportamiento por entorno sin tocar codigo.
+
 ## Autenticación y autorización
 
 ### Login
@@ -154,11 +193,16 @@ Credenciales de prueba:
 - `admin@example.com` / `admin123`
 - `user@example.com` / `user123`
 
+Comportamiento:
+
+- valida credenciales
+- devuelve el usuario autenticado
+- emite `access_token` y `refresh_token` como cookies `HttpOnly`
+
 Respuesta:
 
 ```json
 {
-  "access_token": "jwt-token",
   "user": {
     "id": "1",
     "email": "admin@example.com",
@@ -178,6 +222,35 @@ GET /auth/me
 
 Requiere token JWT válido si `AUTH_ENABLED=true`.
 
+En la práctica actual, eso significa que debe existir una cookie `access_token` válida.
+
+### Refresh de sesión
+
+Endpoint:
+
+```http
+POST /auth/refresh
+```
+
+Comportamiento:
+
+- usa la cookie `refresh_token`
+- emite nuevas cookies de `access_token` y `refresh_token`
+- invalida el refresh token anterior
+
+### Logout
+
+Endpoint:
+
+```http
+POST /auth/logout
+```
+
+Comportamiento:
+
+- limpia ambas cookies
+- invalida la sesión de refresh activa
+
 ### Roles
 
 Roles disponibles:
@@ -195,14 +268,16 @@ Endpoints restringidos a `ADMIN`:
 - `POST /cars`
 - `PUT /cars/:id`
 - `DELETE /cars/:id`
-- `POST /cars/:id/documents`
-- `DELETE /cars/:id/documents`
+- `POST /cars/:id/document`
+- `DELETE /cars/:id/document`
 
 ## Endpoints disponibles
 
 ### Auth
 
 - `POST /auth/login`
+- `POST /auth/refresh`
+- `POST /auth/logout`
 - `GET /auth/me`
 
 ### Cars
@@ -210,11 +285,11 @@ Endpoints restringidos a `ADMIN`:
 - `GET /cars`
 - `GET /cars/export/excel`
 - `GET /cars/:id`
-- `GET /cars/:id/documents`
-- `GET /cars/:id/documents/download`
+- `GET /cars/:id/document`
+- `GET /cars/:id/document/download`
 - `POST /cars`
-- `POST /cars/:id/documents`
-- `DELETE /cars/:id/documents`
+- `POST /cars/:id/document`
+- `DELETE /cars/:id/document`
 - `PUT /cars/:id`
 - `DELETE /cars/:id`
 
@@ -279,7 +354,7 @@ Columnas incluidas:
 Ejemplo:
 
 ```http
-GET /cars/export/excel?brandId=brand-1&modelId=model-1&sortBy=price&sortOrder=desc
+GET /cars/export/excel?brandId=brand-1&modelId=model-1&sortBy=brand&sortOrder=asc
 ```
 
 ### `GET /cars/:id`
@@ -315,7 +390,7 @@ Devuelve el coche completo:
 }
 ```
 
-### `POST /cars/:id/documents`
+### `POST /cars/:id/document`
 
 Permite practicar subida de ficheros usando `multipart/form-data`.
 
@@ -362,20 +437,20 @@ Respuesta de ejemplo:
   "description": "Documento de prueba para practicar subida con FormData",
   "uploadedAt": "2026-03-27T10:15:00.000Z",
   "persisted": true,
-  "downloadUrl": "/cars/uuid/documents/download",
+  "downloadUrl": "/cars/uuid/document/download",
   "message": "The file was stored on disk and replaced any previous document linked to the vehicle."
 }
 ```
 
-### `GET /cars/:id/documents`
+### `GET /cars/:id/document`
 
 Devuelve los metadatos del único documento asociado al coche.
 
-### `GET /cars/:id/documents/download`
+### `GET /cars/:id/document/download`
 
 Descarga el único documento asociado al coche usando el `id` del vehículo.
 
-### `DELETE /cars/:id/documents`
+### `DELETE /cars/:id/document`
 
 Elimina el único documento asociado al coche usando el `id` del vehículo.
 
@@ -411,15 +486,11 @@ Respuesta:
 
 Valores permitidos para `sortBy`:
 
-- `brandId`
-- `modelId`
+- `brand`
+- `model`
 - `total`
-- `price`
-- `manufactureYear`
-- `registrationDate`
-- `mileage`
-- `licensePlate`
-- `availability`
+
+En esta práctica, el contrato de lista solo expone filtros y ordenación sobre campos visibles del propio listado. Por eso `GET /cars` no acepta filtros por `licensePlate` o `available`, ni ordenación por campos de detalle que no forman parte de `CarSummary`.
 
 Valores permitidos para `sortOrder`:
 
@@ -435,13 +506,13 @@ GET /cars?page=1&limit=10&brandId=brand-1&modelId=model-1
 Ejemplo con ordenación:
 
 ```http
-GET /cars?page=1&limit=10&sortBy=price&sortOrder=desc
+GET /cars?page=1&limit=10&sortBy=brand&sortOrder=asc
 ```
 
 Ejemplo de exportación con los mismos filtros:
 
 ```http
-GET /cars/export/excel?brandId=brand-1&modelId=model-1&sortBy=registrationDate&sortOrder=desc
+GET /cars/export/excel?brandId=brand-1&modelId=model-1&sortBy=model&sortOrder=desc
 ```
 
 ## Validaciones importantes
@@ -546,8 +617,8 @@ Si el equipo ya tiene más nivel:
 
 1. trabajar directamente con `AUTH_ENABLED=true`
 2. implementar login desde el inicio
-3. añadir interceptor JWT
-4. consumir `GET /auth/me`
+3. diseñar gestión de sesión con `GET /auth/me`
+4. resolver renovación con `POST /auth/refresh`
 5. restringir UI según rol
 
 ## Ejemplos útiles
@@ -568,7 +639,6 @@ Content-Type: application/json
 
 ```http
 POST /cars
-Authorization: Bearer <token>
 Content-Type: application/json
 
 {
@@ -590,11 +660,12 @@ Content-Type: application/json
 }
 ```
 
+La petición debe realizarse con la sesión autenticada ya establecida en cookies.
+
 ### Subir documento de práctica
 
 ```http
-POST /cars/:id/documents
-Authorization: Bearer <token>
+POST /cars/:id/document
 Content-Type: multipart/form-data
 ```
 
@@ -609,19 +680,19 @@ Ejemplo conceptual desde frontend:
 
 ```http
 GET /auth/me
-Authorization: Bearer <token>
 ```
+
+La petición debe viajar con las cookies de sesión.
 
 ## Limitaciones actuales
 
 - no hay base de datos
 - no hay persistencia entre reinicios
-- no hay refresh token
-- no hay logout de servidor
 - no hay subida real de imágenes desde cliente
 - los documentos sí se guardan en disco local, pero su metadata y asociación con cada coche viven en memoria
 - no hay usuarios dinámicos ni registro
 - las credenciales son fijas para práctica
+- la revocación de refresh tokens vive en memoria y no en persistencia compartida
 
 ## Qué debería revisar siempre el frontend antes de integrar
 

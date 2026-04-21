@@ -155,8 +155,8 @@ Tareas recomendadas:
 
 1. añadir en `cars/:id` una acción o formulario secundario para adjuntar documento al coche
 2. construir `FormData` con `file` y metadatos opcionales
-3. conectar `POST /cars/:id/documents`
-4. mostrar en el detalle los metadatos del documento usando `GET /cars/:id/documents`
+3. conectar `POST /cars/:id/document`
+4. mostrar en el detalle los metadatos del documento usando `GET /cars/:id/document`
 5. mostrar errores de tamaño o tipo no permitido
 
 Qué aprenderás aquí:
@@ -218,16 +218,16 @@ Tareas recomendadas:
 
 1. crear pantalla de login
 2. llamar a `POST /auth/login`
-3. persistir el token
-4. crear interceptor para enviar el bearer token
-5. consultar `GET /auth/me`
-6. reconstruir sesión al recargar la app
+3. consultar `GET /auth/me`
+4. reconstruir sesión al recargar la app
+5. resolver `401` autenticando de nuevo la sesión con `POST /auth/refresh`
+6. reintentar la petición original solo cuando el refresh haya funcionado
 
 Qué aprenderás aquí:
 
 - autenticación real
 - persistencia de sesión
-- seguridad de frontend
+- renovación de sesión
 
 ## Bloque 9. Roles y autorización
 
